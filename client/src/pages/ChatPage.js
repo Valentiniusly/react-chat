@@ -142,7 +142,7 @@ export default function ChatPage({ user, setUser }) {
               </header>
               <main className='content'>
                 <aside className='users-container d-none d-md-block '>
-                  <Users socket={socket} />
+                  <Users />
                 </aside>
                 <Chat />
               </main>

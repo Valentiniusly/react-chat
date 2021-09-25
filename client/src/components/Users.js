@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import SocketContext from '../context/SocketContext';
 
-export default function Users({ socket }) {
+export default function Users() {
   const [users, setUsers] = useState([]);
+  const socket = useContext(SocketContext);
   useEffect(() => {
     socket.on('roomUsers', ({ room, users }) => {
       setUsers(users);
