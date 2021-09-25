@@ -7,6 +7,9 @@ export default function Users({ socket }) {
     socket.on('roomUsers', ({ room, users }) => {
       setUsers(users);
     });
+    return () => {
+      setUsers([]);
+    };
   }, []);
 
   return (

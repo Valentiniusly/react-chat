@@ -18,6 +18,9 @@ export default function Chat() {
         chat.current.scrollTo(0, scroll);
       }
     });
+    return () => {
+      setMessages([]);
+    };
   }, []);
 
   return (
