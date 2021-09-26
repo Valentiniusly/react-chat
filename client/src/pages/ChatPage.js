@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useHistory } from 'react-router-dom';
 import SocketContext from '../context/SocketContext';
-import Peer from 'simple-peer';
 import Users from '../components/Users';
 import Chat from '../components/Chat';
+import { addVideoStream, createPeer, addPeer } from '../utils/streaming';
 
 export default function ChatPage({ user, setUser }) {
   const socket = useContext(SocketContext);
@@ -24,15 +24,9 @@ export default function ChatPage({ user, setUser }) {
     input.current.focus();
   }
 
-  function addVideoStream(video, stream) {
-    video.srcObject = stream;
-    video.addEventListener('click', () => video.play());
-    document.body.append(video);
-  }
-
   function videoBtnHandler() {
-    setStreaming(true);
     // start stream
+    setStreaming(true);
     const myVideo = document.createElement('video');
     myVideo.muted = true;
 
@@ -48,7 +42,7 @@ export default function ChatPage({ user, setUser }) {
 
         socket.on('usersForStream', (users) => {
           users.forEach((user) => {
-            const peer = createPeer(user.id, socket.id, stream);
+            const peer = createPeer(user.id, socket.id, stream, socket);
             peersRef.current.push({
               peerID: user.id,
               peer,
@@ -62,42 +56,6 @@ export default function ChatPage({ user, setUser }) {
           item.peer.signal(signal);
         });
       });
-  }
-
-  function createPeer(userToSignal, callerID, stream) {
-    const peer = new Peer({
-      initiator: true,
-      trickle: false,
-      stream,
-    });
-
-    peer.on('signal', (signal) => {
-      socket.emit('sending signal', { userToSignal, callerID, signal });
-    });
-
-    peer.on('error', (error) => {
-      console.log(error);
-    });
-
-    return peer;
-  }
-
-  function addPeer(incomingSignal, callerID) {
-    const peer = new Peer({
-      trickle: false,
-    });
-
-    peer.on('signal', (signal) => {
-      socket.emit('returning signal', { signal, callerID });
-    });
-
-    peer.on('error', (error) => {
-      console.log(error);
-    });
-
-    peer.signal(incomingSignal);
-
-    return peer;
   }
 
   useEffect(() => {
@@ -115,17 +73,20 @@ export default function ChatPage({ user, setUser }) {
         username,
         room,
       });
+
+      // / check streamer existence in room
       socket.on('isStreaming', (stream) => setStreaming(stream));
 
       socket.on('startStream', ({ signal, callerID }) => {
         setStreaming(true);
-        const peer = addPeer(signal, callerID);
+        const peer = addPeer(signal, callerID, socket);
+
+        // accept videostream
         peer.on('stream', (stream) => {
           const video = document.createElement('video');
           addVideoStream(video, stream);
         });
         myPeerRef.current = peer;
-        console.log('start');
       });
 
       // stop stream if consumer
@@ -169,7 +130,7 @@ export default function ChatPage({ user, setUser }) {
                   className='btn btn-dark'
                   disabled={streaming}
                 >
-                  Video
+                  Stream
                 </button>
                 <svg
                   viewBox='0 0 100 80'

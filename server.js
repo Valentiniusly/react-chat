@@ -1,4 +1,3 @@
-const path = require('path');
 const http = require('http');
 const express = require('express');
 const socketio = require('socket.io');
@@ -36,6 +35,8 @@ io.on('connection', (socket) => {
           type: 'system',
         })
       );
+
+      // update room participants
       io.to(user.room).emit('roomUsers', {
         room: user.room,
         users: getRoomUsers(user.room),
@@ -47,8 +48,11 @@ io.on('connection', (socket) => {
     const user = userJoin(socket.id, username, room);
     if (user) {
       socket.join(user.room);
+
+      // check streamer existence in room
       socket.emit('isStreaming', !!streamers[user.room]);
 
+      // load messages before user join
       socket.emit('oldMessages', getOldMessages(user.room));
 
       io.to(user.room).emit(
@@ -61,6 +65,7 @@ io.on('connection', (socket) => {
         })
       );
 
+      // update room participants
       io.to(user.room).emit('roomUsers', {
         room: user.room,
         users: getRoomUsers(user.room),
@@ -110,6 +115,7 @@ io.on('connection', (socket) => {
     const user = userLeave(socket.id);
 
     if (user) {
+      // stop stream, if user was streamer
       if (user.id === streamers[user.room]) {
         io.to(user.room).emit('stopStream', streamers[user.room]);
         streamers[user.room] = undefined;
@@ -124,6 +130,7 @@ io.on('connection', (socket) => {
         })
       );
 
+      // update room participants
       io.to(user.room).emit('roomUsers', {
         room: user.room,
         users: getRoomUsers(user.room),

@@ -51,7 +51,7 @@ input.form-control {
 .content {
   margin-bottom: 20px;
   display: flex;
-  justify-content: start;
+  justify-content: flex-start;
   height: 100%;
   overflow: hidden;
 }
