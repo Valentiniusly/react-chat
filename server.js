@@ -40,8 +40,6 @@ io.on('connection', (socket) => {
         room: user.room,
         users: getRoomUsers(user.room),
       });
-    } else {
-      console.log('LeaveRoom went wrong');
     }
   });
 
@@ -49,6 +47,7 @@ io.on('connection', (socket) => {
     const user = userJoin(socket.id, username, room);
     if (user) {
       socket.join(user.room);
+      socket.emit('isStreaming', !!streamers[user.room]);
 
       socket.emit('oldMessages', getOldMessages(user.room));
 
@@ -66,20 +65,27 @@ io.on('connection', (socket) => {
         room: user.room,
         users: getRoomUsers(user.room),
       });
-    } else {
-      console.log('JoinRoom went wrong');
     }
   });
 
   socket.on('startStream', ({ id, room }) => {
-    console.log('startStream');
     streamers[room] = id;
     const usersForStream = getUsersForStream({ id, room });
     socket.emit('usersForStream', usersForStream);
   });
 
+  socket.on('sending signal', ({ signal, callerID, userToSignal }) => {
+    io.to(userToSignal).emit('startStream', { signal, callerID });
+  });
+
+  socket.on('returning signal', ({ callerID, signal }) => {
+    io.to(callerID).emit('receiving returned signal', {
+      signal,
+      id: socket.id,
+    });
+  });
+
   socket.on('stopStream', ({ id, room }) => {
-    console.log('stop stream');
     if (id === streamers[room]) {
       io.to(room).emit('stopStream', streamers[room]);
       streamers[room] = undefined;

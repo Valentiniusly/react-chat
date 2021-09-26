@@ -28,7 +28,7 @@ export default function Chat() {
       {messages.map((msg) => {
         if (msg.type === 'system') {
           return (
-            <div className='system-message' key={Date.now() + Math.random()}>
+            <div className='system-message' key={msg.text + Math.random()}>
               {msg.text}
             </div>
           );

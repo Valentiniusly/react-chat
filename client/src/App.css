@@ -124,6 +124,9 @@ input.form-control {
   font-size: 14px;
   color: #5550f2b0;
 }
+.message .author {
+  color: #5550f2;
+}
 .message p {
   margin: 0;
 }
@@ -160,6 +163,13 @@ video {
   margin: 0 auto;
   margin-top: 20px;
   width: 540px;
+}
+
+button:not(:disabled) {
+  transition: all 0.25s;
+}
+button:disabled {
+  transition: all 0.25s;
 }
 
 @media screen and (max-width: 767px) {

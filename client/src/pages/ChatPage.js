@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useHistory } from 'react-router-dom';
 import SocketContext from '../context/SocketContext';
-import Peer from 'peerjs';
+import Peer from 'simple-peer';
 import Users from '../components/Users';
 import Chat from '../components/Chat';
 
@@ -10,10 +10,10 @@ export default function ChatPage({ user, setUser }) {
   const history = useHistory();
   const input = useRef();
   const videoBtn = useRef();
+  const myPeerRef = useRef();
+  const peersRef = useRef([]);
   const [streaming, setStreaming] = useState(false);
   const [userMessage, setUserMessage] = useState('');
-
-  let myPeer = new Peer(socket.id);
 
   function messageHandler(e) {
     e.preventDefault();
@@ -31,6 +31,7 @@ export default function ChatPage({ user, setUser }) {
   }
 
   function videoBtnHandler() {
+    setStreaming(true);
     // start stream
     const myVideo = document.createElement('video');
     myVideo.muted = true;
@@ -41,18 +42,62 @@ export default function ChatPage({ user, setUser }) {
         audio: true,
       })
       .then((stream) => {
+        socket.emit('startStream', { id: socket.id, room: user.room });
         addVideoStream(myVideo, stream);
         myVideo.play();
-        setStreaming(!streaming);
-
-        socket.emit('startStream', { id: socket.id, room: user.room });
 
         socket.on('usersForStream', (users) => {
           users.forEach((user) => {
-            myPeer.call(user.id, stream);
+            const peer = createPeer(user.id, socket.id, stream);
+            peersRef.current.push({
+              peerID: user.id,
+              peer,
+            });
+            myPeerRef.current = peer;
           });
         });
+
+        socket.on('receiving returned signal', ({ id, signal }) => {
+          const item = peersRef.current.find((p) => p.peerID === id);
+          item.peer.signal(signal);
+        });
       });
+  }
+
+  function createPeer(userToSignal, callerID, stream) {
+    const peer = new Peer({
+      initiator: true,
+      trickle: false,
+      stream,
+    });
+
+    peer.on('signal', (signal) => {
+      socket.emit('sending signal', { userToSignal, callerID, signal });
+    });
+
+    peer.on('error', (error) => {
+      console.log(error);
+    });
+
+    return peer;
+  }
+
+  function addPeer(incomingSignal, callerID) {
+    const peer = new Peer({
+      trickle: false,
+    });
+
+    peer.on('signal', (signal) => {
+      socket.emit('returning signal', { signal, callerID });
+    });
+
+    peer.on('error', (error) => {
+      console.log(error);
+    });
+
+    peer.signal(incomingSignal);
+
+    return peer;
   }
 
   useEffect(() => {
@@ -70,17 +115,17 @@ export default function ChatPage({ user, setUser }) {
         username,
         room,
       });
+      socket.on('isStreaming', (stream) => setStreaming(stream));
 
-      // DOESN'T WORK
-      myPeer.on('call', (call) => {
-        console.log('onCall');
-        call.answer();
-        document.getElementById('video-button').disabled = true;
-
-        const video = document.createElement('video');
-        call.on('stream', (stream) => {
+      socket.on('startStream', ({ signal, callerID }) => {
+        setStreaming(true);
+        const peer = addPeer(signal, callerID);
+        peer.on('stream', (stream) => {
+          const video = document.createElement('video');
           addVideoStream(video, stream);
         });
+        myPeerRef.current = peer;
+        console.log('start');
       });
 
       // stop stream if consumer
@@ -88,23 +133,21 @@ export default function ChatPage({ user, setUser }) {
         if (id !== socket.id) {
           const video = document.querySelector('video');
           video && video.remove();
-          document.getElementById('video-button').disabled = false;
+          setStreaming(false);
         }
       });
     }
 
     return () => {
-      myPeer && myPeer.destroy();
+      myPeerRef.current && myPeerRef.current.destroy();
       const video = document.querySelector('video');
       if (video) {
         socket.emit('stopStream', { id: socket.id, room });
         const stream = video.srcObject;
         const tracks = stream.getTracks();
-
         tracks.forEach((track) => {
           track.stop();
         });
-
         video.srcObject = null;
         video.remove();
       }
@@ -166,6 +209,7 @@ export default function ChatPage({ user, setUser }) {
                       className='btn btn-dark'
                       type='submit'
                       id='button-addon2'
+                      disabled={!userMessage}
                     >
                       Send
                     </button>
@@ -180,7 +224,7 @@ export default function ChatPage({ user, setUser }) {
         <div className='modal-dialog modal-dialog-centered'>
           <div className='modal-content'>
             <div className='modal-body'>
-              <Users socket={socket} />
+              <Users />
             </div>
           </div>
         </div>

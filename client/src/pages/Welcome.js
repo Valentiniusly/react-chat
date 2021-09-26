@@ -45,7 +45,11 @@ export default function Welcome({ user, setUser }) {
                 onChange={({ target }) => setNameInput(target.value)}
               />
             </div>
-            <button type='submit' className='btn btn-dark'>
+            <button
+              type='submit'
+              className='btn btn-dark'
+              disabled={!nameInput}
+            >
               Submit
             </button>
           </form>
