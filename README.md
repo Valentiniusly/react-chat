@@ -1,3 +1,3 @@
-to start the project: **npm run dev**
+To start the project: **npm run dev**
 
-video streaming works for already connected users
+Video streaming works for already connected users
